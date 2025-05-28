@@ -3,85 +3,74 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from database import create_table, add_item, get_inventory, update_item, delete_item
 
-# Initialize the database
+# Initialize database
 create_table()
 
-# App title
-st.title("📦 Inventory Management System")
+st.title("Inventory Management System")
 
-# Input form to add a new item
-with st.form(key='inventory_form'):
+# --- Add Item Form ---
+with st.form("Add Item"):
+    st.subheader("Add New Inventory Item")
     model = st.text_input("Model")
     purchased_qty = st.number_input("Purchased Qty", min_value=0)
     received_qty = st.number_input("Received Qty", min_value=0)
     client_orders = st.number_input("Client Orders", min_value=0)
     dispatched_qty = st.number_input("Dispatched Qty", min_value=0)
+    submitted = st.form_submit_button("Add Item")
+    if submitted:
+        add_item(model, purchased_qty, received_qty, client_orders, dispatched_qty)
+        st.success(f"{model} added to inventory!")
 
-    submit_button = st.form_submit_button("Add Item")
-
-    if submit_button:
-        if not model:
-            st.error("Model name is required.")
-        else:
-            add_item(model, purchased_qty, received_qty, client_orders, dispatched_qty)
-            st.success(f"✅ Added '{model}' to inventory.")
-
-# Show inventory table
-st.subheader("📋 Current Inventory")
+# --- Display Inventory ---
+st.subheader("Current Inventory")
 inventory_data = get_inventory()
 
 if inventory_data:
-    inventory_df = pd.DataFrame(inventory_data, columns=[
-        "ID", "Model", "Purchased Qty", "Received Qty", "Client Orders", "Dispatched Qty"
-    ])
+    inventory_df = pd.DataFrame(inventory_data, columns=["ID", "Model", "Purchased Qty", "Received Qty", "Client Orders", "Dispatched Qty"])
     st.dataframe(inventory_df)
 
-    # Select an item to edit or delete
-    selected_id = st.selectbox("Select an Item ID to Edit or Delete", inventory_df["ID"])
+    selected_id = st.selectbox("Select Item ID to Edit or Delete", inventory_df["ID"])
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🗑️ Delete Item"):
-            delete_item(selected_id)
-            st.success("Item deleted successfully!")
-    with col2:
-        if st.button("✏️ Edit Item"):
-            item = inventory_df[inventory_df["ID"] == selected_id].iloc[0]
-            with st.form(key='edit_form'):
-                model = st.text_input("Model", value=item["Model"])
-                purchased_qty = st.number_input("Purchased Qty", value=item["Purchased Qty"], min_value=0)
-                received_qty = st.number_input("Received Qty", value=item["Received Qty"], min_value=0)
-                client_orders = st.number_input("Client Orders", value=item["Client Orders"], min_value=0)
-                dispatched_qty = st.number_input("Dispatched Qty", value=item["Dispatched Qty"], min_value=0)
-                update_btn = st.form_submit_button("Update Item")
-                if update_btn:
-                    update_item(selected_id, model, purchased_qty, received_qty, client_orders, dispatched_qty)
-                    st.success("Item updated successfully!")
+    # --- Delete ---
+    if st.button("Delete Item"):
+        delete_item(selected_id)
+        st.success("Item deleted successfully!")
 
-    # Inventory Visualizations
-    st.subheader("📊 Inventory Visualizations")
+    # --- Edit ---
+    with st.expander("Edit Selected Item"):
+        item = inventory_df[inventory_df["ID"] == selected_id].iloc[0]
+        new_model = st.text_input("Model", item["Model"])
+        new_purchased = st.number_input("Purchased Qty", value=int(item["Purchased Qty"]), min_value=0)
+        new_received = st.number_input("Received Qty", value=int(item["Received Qty"]), min_value=0)
+        new_orders = st.number_input("Client Orders", value=int(item["Client Orders"]), min_value=0)
+        new_dispatched = st.number_input("Dispatched Qty", value=int(item["Dispatched Qty"]), min_value=0)
+        if st.button("Update Item"):
+            update_item(selected_id, new_model, new_purchased, new_received, new_orders, new_dispatched)
+            st.success("Item updated successfully!")
+
+# --- Visualizations ---
+if inventory_data:
+    st.subheader("Inventory Visualizations")
     inventory_df["Stock Balance"] = inventory_df["Received Qty"] - inventory_df["Dispatched Qty"]
     inventory_df["Status"] = inventory_df["Stock Balance"].apply(
         lambda x: "In Stock" if x >= 100 else "Low Stock" if x > 0 else "Out of Stock"
     )
 
-    # Bar Chart: Stock Balance
-    st.subheader("📦 Stock Balance by Model")
-    plt.figure(figsize=(10, 4))
-    plt.bar(inventory_df["Model"], inventory_df["Stock Balance"], color='skyblue')
-    plt.xlabel("Model")
-    plt.ylabel("Stock Balance")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    st.pyplot(plt)
+    # Bar chart
+    st.write("### Stock Balance by Model")
+    fig1, ax1 = plt.subplots()
+    ax1.bar(inventory_df["Model"], inventory_df["Stock Balance"], color="skyblue")
+    ax1.set_xlabel("Model")
+    ax1.set_ylabel("Stock Balance")
+    ax1.set_title("Stock Balance by Model")
+    st.pyplot(fig1)
 
-    # Pie Chart: Status Distribution
-    st.subheader("📈 Inventory Status Distribution")
+    # Pie chart
+    st.write("### Inventory Status Distribution")
+    fig2, ax2 = plt.subplots()
     status_counts = inventory_df["Status"].value_counts()
-    plt.figure(figsize=(6, 6))
-    plt.pie(status_counts, labels=status_counts.index, autopct='%1.1f%%', startangle=90)
-    plt.title("Status Distribution")
-    st.pyplot(plt)
-
+    ax2.pie(status_counts, labels=status_counts.index, autopct="%1.1f%%", startangle=90)
+    ax2.set_title("Inventory Status")
+    st.pyplot(fig2)
 else:
-    st.info("No inventory data available. Add items to get started.")
+    st.info("No inventory data available. Add some items first.")
