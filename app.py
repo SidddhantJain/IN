@@ -18,13 +18,22 @@ st.title("Inventory Management System")
 
 # Input form for adding new inventory items
 with st.form(key='inventory_form'):
-    model = st.text_input("Model", required=True)
-    purchased_qty = st.number_input("Purchased Qty", min_value=0, required=True)
-    received_qty = st.number_input("Received Qty", min_value=0, required=True)
-    client_orders = st.number_input("Client Orders", min_value=0, required=True)
-    dispatched_qty = st.number_input("Dispatched Qty", min_value=0, required=True)
+    model = st.text_input("Model")
+    purchased_qty = st.number_input("Purchased Qty", min_value=0)
+    received_qty = st.number_input("Received Qty", min_value=0)
+    client_orders = st.number_input("Client Orders", min_value=0)
+    dispatched_qty = st.number_input("Dispatched Qty", min_value=0)
     
     submit_button = st.form_submit_button("Add Item")
+
+    if submit_button:
+        if not model:
+            st.error("Model is required.")
+        else:
+            add_item(model, purchased_qty, received_qty, client_orders, dispatched_qty)
+            st.success(f"Added {model} to inventory!")
+
+   
 
     if submit_button:
         new_item = {
